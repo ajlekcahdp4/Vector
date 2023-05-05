@@ -71,13 +71,14 @@ class Vector final: private detail::VectorBuf<T>
 {
     using value_type      = T;
     using pointer         = T*;
+    using const_pointer   = const T*;
     using reference       = T&;
     using const_reference = const T&;
     using size_type       = typename std::size_t;
     using base            = detail::VectorBuf<T>;
 
-    using Iterator      = std::iterator_traits<pointer>;
-    using ConstIterator = std::iterator_traits<const_pointer>;
+    using Iterator      = pointer;
+    using ConstIterator = const_pointer;
     using ReverseIterator      = std::reverse_iterator<Iterator>;
     using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
     
@@ -88,9 +89,9 @@ class Vector final: private detail::VectorBuf<T>
 public:
     Vector() = default;
 
-    Vector(size_type size): base(size)
+    explicit Vector(size_type size): base(size)
     {
-        std::uninitialized_fill(data_, data_ + size_, value_type{});
+        std::uninitialized_default_construct(data_, data_ + size_);
         used_ = size_;
     }
 
@@ -103,8 +104,8 @@ public:
     template<std::input_iterator InpIt>
     Vector(InpIt first, InpIt last): base(std::distance(first, last))
     {
-        while (first != last)
-            detail::construct(data_ + used_++, *first++);   
+        std::uninitialized_copy(first, last, data_);
+        used_ = size_;
     }
 
     Vector(std::initializer_list<T> initlist)
@@ -226,16 +227,16 @@ public:
     void resize(size_type newsz)
     {
         if (newsz <= used_)
-            detail::destroy(data + newsz, data_ + used_);
+            detail::destroy(data_ + newsz, data_ + used_);
         else if (newsz > used_ && newsz <= size_)
-            std::uninitialized_fill(data_ + used_, data_ + newsz, value_type{});
+            std::uninitialized_default_construct(data_ + used_, data_ + newsz);
         else
         {
             auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
             std::uninitialized_move(data_, data_ + used_, new_data);
             try 
             {
-                std::uninitialized_fill(new_data + used_, new_data + newsz, value_type{});
+                std::uninitialized_default_construct(new_data + used_, new_data + newsz);
             }
             catch(...)
             {
@@ -253,7 +254,7 @@ public:
     void resize(size_type newsz, const_reference value)
     {
         if (newsz <= used_)
-            detail::destroy(data + newsz, data_ + used_);
+            detail::destroy(data_ + newsz, data_ + used_);
         else if (newsz > used_ && newsz <= size_)
             std::uninitialized_fill(data_ + used_, data_ + newsz, value);
         else
@@ -275,6 +276,16 @@ public:
             size_ = newsz;
         } 
         used_ = newsz;
+    }
+
+    void shrink_to_fit()
+    {
+        auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * used_));
+
+        std::uninitialized_move(data_, data_ + used_, new_data);
+        ::operator delete(data_);
+        data_ = new_data;
+        size_ = used_;
     }
 
     Iterator begin() {return Iterator{data_};}
