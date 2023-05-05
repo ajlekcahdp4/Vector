@@ -1,6 +1,6 @@
 #pragma once
-#include "contiguous_iterator.hpp"
 #include <initializer_list>
+#include <memory>
 
 namespace Container
 {
@@ -9,10 +9,7 @@ namespace detail
 {
 
 template<typename T>
-void construct(T* p, const T& rhs) {new (p) T{rhs};}
-
-template<typename T>
-void construct(T* p, T&& rhs) {new (p) T{std::move(rhs)};}
+void construct(T* p, T&& rhs) {new (p) T{std::forward<T>(rhs)};}
 
 template<class T>
 void destroy(T* p) {p->~T();}
@@ -60,8 +57,9 @@ protected:
         return *this;
     }
 
-    virtual ~VectorBuf()
+    ~VectorBuf()
     {
+        detail::destroy(data_, data_ + used_);
         ::operator delete(data_);
     }
 };
@@ -78,14 +76,32 @@ class Vector final: private detail::VectorBuf<T>
     using size_type       = typename std::size_t;
     using base            = detail::VectorBuf<T>;
 
+    using Iterator      = std::iterator_traits<pointer>;
+    using ConstIterator = std::iterator_traits<const_pointer>;
+    using ReverseIterator      = std::reverse_iterator<Iterator>;
+    using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
+    
+
     using base::size_;
     using base::used_;
     using base::data_;
 public:
-    Vector(size_type size = 0): base::VectorBuf(size) {}
+    Vector() = default;
+
+    Vector(size_type size): base(size)
+    {
+        std::uninitialized_fill(data_, data_ + size_, value_type{});
+        used_ = size_;
+    }
+
+    Vector(size_type size, const_reference val): base(size)
+    {
+        std::uninitialized_fill(data_, data_ + size_, val);
+        used_ = size_;
+    }
 
     template<std::input_iterator InpIt>
-    Vector(InpIt first, InpIt last): base::VectorBuf(std::distance(first, last))
+    Vector(InpIt first, InpIt last): base(std::distance(first, last))
     {
         while (first != last)
             detail::construct(data_ + used_++, *first++);   
@@ -99,10 +115,10 @@ public:
     Vector(Vector&&)            = default;
     Vector& operator=(Vector&&) = default;
 
-    Vector(const Vector& rhs): base::VectorBuf(rhs.used_)
+    Vector(const Vector& rhs): base(rhs.used_)
     {
         for (size_type i = 0; i < used_; i++)
-            detail::construct(data_ + i, rhs.data[i]);
+            detail::construct(data_ + i, rhs.data_[i]);
     }
 
     Vector& operator=(const Vector& rhs)
@@ -112,10 +128,7 @@ public:
         return *this;
     }
 
-    ~Vector()
-    {
-        detail::destroy(data_, data_ + used_);
-    }
+    ~Vector() = default;
 
 public:
     size_type size() const {return used_;}
@@ -124,8 +137,7 @@ public:
 
     reference       operator[](size_type index) &      noexcept {return data_[index];}
     const_reference operator[](size_type index) const& noexcept {return data_[index];}
-    value_type      operator[](size_type index) &&     noexcept {return data_[index];}
-
+    
     reference at(size_type index) &  
     {
         if(index >= used_)
@@ -133,12 +145,6 @@ public:
         return data_[index];
     }
     const_reference at(size_type index) const&
-    {
-        if(index >= used_)
-            throw std::out_of_range{"try to get acces to element out of array"};
-        return data_[index];
-    }
-    value_type at(size_type index) &&          
     {
         if(index >= used_)
             throw std::out_of_range{"try to get acces to element out of array"};
@@ -154,27 +160,40 @@ public:
 
     void push_back(value_type&& val)
     {
-        if (need_resize_up())
-            resize_up(2 * size_ + 1);
+        if (need_reserve_up())
+            reserve(2 * size_ + 1);
         
         detail::construct(data_ + used_++, std::move(val));
     }
 private:
-    bool need_resize_up() const {return (used_ == size_);}
-
-    void resize_up(size_type newsz)
-    {
-        Vector tmp (newsz);
-        while (tmp.used_ < used_)
-            tmp.push_back(std::move(data_[tmp.used_]));
-        std::swap(*this, tmp);
-    }
+    bool need_reserve_up() const {return (used_ == size_);}
 public:
-    value_type back() const
+    const_reference back() const
     {
         if (empty())
             throw std::underflow_error{"try to get back from empty vector"};
         return data_[used_ - 1];
+    }
+
+    reference back()
+    {
+        if (empty())
+            throw std::underflow_error{"try to get back from empty vector"};
+        return data_[used_ - 1];
+    }
+
+    reference front()
+    {
+        if (empty())
+            throw std::underflow_error{"try to get back from empty vector"};
+        return data_[0];
+    }
+
+    const_reference front() const
+    {
+        if (empty())
+            throw std::underflow_error{"try to get back from empty vector"};
+        return data_[0];
     }
 
     void pop_back()
@@ -185,55 +204,79 @@ public:
         detail::destroy(data_ + used_);
     }
 
-    value_type front()
-    {
-        if (empty())
-            throw std::underflow_error{"try to get back from empty vector"};
-        return data_[0];
-    }
-
-    void shrink_to_fit()
-    {
-        assert(used_ <= size_);
-
-        if (used_ == size_)
-            return;
-
-        Vector tmp (used_);
-        while (tmp.used_ < used_)
-            tmp.push_back(std::move(data_[tmp.used_]));
-        std::swap(*this, tmp);
-    }
-
     void clear()
     {
         detail::destroy(data_, data_ + used_);
         used_ = 0;
     }
 
+    void reserve(size_type newsz)
+    {
+        if (size_ >= newsz)
+            return;
+        
+        auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
+
+        std::uninitialized_move(data_, data_ + used_, new_data);
+        ::operator delete(data_);
+        data_ = new_data;
+        size_ = newsz;
+    }
+
     void resize(size_type newsz)
     {
-        if (newsz < used_)
-            while (used_ != newsz)
-                pop_back();
+        if (newsz <= used_)
+            detail::destroy(data + newsz, data_ + used_);
+        else if (newsz > used_ && newsz <= size_)
+            std::uninitialized_fill(data_ + used_, data_ + newsz, value_type{});
         else
-            while (used_ != newsz)
-                push_back(value_type{});
+        {
+            auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
+            std::uninitialized_move(data_, data_ + used_, new_data);
+            try 
+            {
+                std::uninitialized_fill(new_data + used_, new_data + newsz, value_type{});
+            }
+            catch(...)
+            {
+                std::move(new_data, new_data + used_, data_);
+                ::operator delete(new_data);
+                throw;
+            }
+            ::operator delete(data_);
+            data_ = new_data;
+            size_ = newsz;
+        } 
+        used_ = newsz;
     }
 
-    void resize(size_type newsz, const value_type& value)
+    void resize(size_type newsz, const_reference value)
     {
-        if (newsz < used_)
-            while (used_ != newsz)
-                pop_back();
+        if (newsz <= used_)
+            detail::destroy(data + newsz, data_ + used_);
+        else if (newsz > used_ && newsz <= size_)
+            std::uninitialized_fill(data_ + used_, data_ + newsz, value);
         else
-            while (used_ != newsz)
-                push_back(value);
+        {
+            auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
+            std::uninitialized_move(data_, data_ + used_, new_data);
+            try 
+            {
+                std::uninitialized_fill(new_data + used_, new_data + newsz, value);
+            }
+            catch(...)
+            {
+                std::move(new_data, new_data + used_, data_);
+                ::operator delete(new_data);
+                throw;
+            }
+            ::operator delete(data_);
+            data_ = new_data;
+            size_ = newsz;
+        } 
+        used_ = newsz;
     }
 
-    using Iterator      = typename detail::ContiguousIterator<value_type>;
-    using ConstIterator = typename detail::ContiguousIterator<const value_type>;
-    
     Iterator begin() {return Iterator{data_};}
     Iterator end()   {return Iterator{data_ + used_};}
 
@@ -242,6 +285,16 @@ public:
 
     ConstIterator cbegin() const {return ConstIterator{data_};}
     ConstIterator cend()   const {return ConstIterator{data_ + used_};}
+
+    ReverseIterator rbegin() {return ReverseIterator{data_ + used_};}
+    ReverseIterator rend()   {return ReverseIterator{data_};}
+
+    ConstReverseIterator rbegin() const {return ConstReverseIterator{data_ + used_};}
+    ConstReverseIterator rend()   const {return ConstReverseIterator{data_};}
+
+    ConstReverseIterator crbegin() const {return ConstReverseIterator{data_ + used_};}
+    ConstReverseIterator crend()   const {return ConstReverseIterator{data_};}
+
 }; // class Vector
 
 } // namespace Container
