@@ -16,7 +16,7 @@ template<typename InpIt, typename OutIt>
 constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt last, OutIt d_first)
 {
     using value_type = typename std::iterator_traits<InpIt>::value_type;
-    if constexpr (std::is_nothrow_move_constructible<value_type>::value)
+    if constexpr (!std::is_copy_constructible<value_type>::value || std::is_nothrow_move_constructible<value_type>::value)
         return std::uninitialized_move(first, last, d_first);
     else
         return std::uninitialized_copy(first, last, d_first);   
@@ -238,7 +238,8 @@ private:
             }
             catch(...)
             {
-                std::move(new_data, new_data + used_, data_);
+                if constexpr (std::is_nothrow_move_assignable<value_type>::value)
+                    std::move(new_data, new_data + used_, data_);
                 std::destroy(new_data, new_data + used_);
                 ::operator delete(new_data);
                 throw;

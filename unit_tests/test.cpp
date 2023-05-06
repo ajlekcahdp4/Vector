@@ -129,6 +129,50 @@ TEST(Vector, BigFiveExceptions)
     EXPECT_EQ(Throwable::a, 0);
 }
 
+TEST(Vector, reserve)
+{
+    Container::Vector<int> vec {};
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_EQ(vec.capacity(), 0);
+
+    vec.reserve(10);
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_EQ(vec.capacity(), 10);
+
+    vec.reserve(5);
+    EXPECT_EQ(vec.size(), 0);
+    EXPECT_EQ(vec.capacity(), 10);
+
+    for (auto i = 0; i < 10; i++)
+        vec.push_back(i);
+
+    EXPECT_EQ(vec.size(), 10);
+    EXPECT_EQ(vec.capacity(), 10);
+
+    vec.reserve(20);
+    for (auto i = 0; i < 10; i++)
+        EXPECT_EQ(vec[i], i);
+    EXPECT_EQ(vec.size(), 10);
+    EXPECT_EQ(vec.capacity(), 20);
+
+    Container::Vector<std::unique_ptr<int>> vec_ptr {};
+
+    vec_ptr.reserve(10);
+    EXPECT_EQ(vec_ptr.size(), 0);
+    EXPECT_EQ(vec_ptr.capacity(), 10);
+
+    for (auto i = 0; i < 10; i++)
+        vec_ptr.push_back(std::make_unique<int>(i));
+    EXPECT_EQ(vec_ptr.size(), 10);
+    EXPECT_EQ(vec_ptr.capacity(), 10);
+
+    vec_ptr.reserve(20);
+    EXPECT_EQ(vec_ptr.size(), 10);
+    EXPECT_EQ(vec_ptr.capacity(), 20);
+    for (auto i = 0; i < 10; i++)
+        EXPECT_EQ(*vec_ptr[i], i);
+}
+
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);
