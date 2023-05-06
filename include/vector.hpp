@@ -1,6 +1,7 @@
 #pragma once
 #include <initializer_list>
 #include <memory>
+#include <iterator>
 
 namespace Container
 {
@@ -10,6 +11,16 @@ namespace detail
 
 template<typename T>
 void construct(T* p, T&& rhs) {new (p) T{std::forward<T>(rhs)};}
+
+template<typename InpIt, typename OutIt>
+constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt last, OutIt d_first)
+{
+    using value_type = typename std::iterator_traits<InpIt>::value_type;
+    if constexpr (std::is_nothrow_move_constructible<value_type>::value)
+        return std::uninitialized_move(first, last, d_first);
+    else
+        return std::uninitialized_copy(first, last, d_first);   
+}
 
 template<typename T>
 class VectorBuf
@@ -201,7 +212,7 @@ public:
             return;
         
         auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
-        std::uninitialized_move(data_, data_ + used_, new_data);
+        detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);
@@ -220,7 +231,7 @@ private:
         else
         {
             auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
-            std::uninitialized_move(data_, data_ + used_, new_data);
+            detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
             try 
             {
                 initializer(new_data + used_, new_data + newsz);
@@ -254,7 +265,7 @@ public:
     void shrink_to_fit()
     {
         auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * used_));
-        std::uninitialized_move(data_, data_ + used_, new_data);
+        detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);

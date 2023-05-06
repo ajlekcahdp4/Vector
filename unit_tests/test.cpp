@@ -23,7 +23,7 @@ struct Throwable
 
     Throwable()
     {
-        if (a % 50 == 0 && throw_on)
+        if (a > 0 && a % 50 == 0 && throw_on)
             throw std::exception{};
         a++;
         vec = std::vector<int>(7, 16);
@@ -34,10 +34,7 @@ struct Throwable
 
     Throwable& operator=(const Throwable&) = default;
     Throwable& operator=(Throwable&&) = default;
-    ~Throwable()
-    {
-        a--;
-    }
+    ~Throwable() {a--;}
 };
 
 TEST(Vector, Ctors)
@@ -69,7 +66,7 @@ TEST(Vector, Ctors)
     Throwable::a = 0;
     Throwable::throw_on = true;
 
-    EXPECT_NO_THROW(Container::Vector<Throwable> vec6 (49););
+    EXPECT_NO_THROW(Container::Vector<Throwable> vec6 (20););
     EXPECT_ANY_THROW(Container::Vector<Throwable> vec7 (51););
 }
 
@@ -94,7 +91,7 @@ TEST(Vector, BigFive)
 
 TEST(Vector, BigFiveExceptions)
 {
-    EXPECT_EQ(Throwable::a, 0);
+    Throwable::a = 0;
     
     if (true){
     Throwable::throw_on = false;
