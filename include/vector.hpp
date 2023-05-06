@@ -11,16 +11,6 @@ namespace detail
 template<typename T>
 void construct(T* p, T&& rhs) {new (p) T{std::forward<T>(rhs)};}
 
-template<class T>
-void destroy(T* p) {p->~T();}
-
-template<std::forward_iterator It>
-void destroy(It first, It last)
-{
-    while (first != last)
-        destroy(&*first++);
-}
-
 template<typename T>
 class VectorBuf
 {
@@ -59,7 +49,7 @@ protected:
 
     ~VectorBuf()
     {
-        detail::destroy(data_, data_ + used_);
+        std::destroy(data_, data_ + used_);
         ::operator delete(data_);
     }
 };
@@ -118,13 +108,13 @@ public:
 
     Vector(const Vector& rhs): base(rhs.used_)
     {
-        for (size_type i = 0; i < used_; i++)
-            detail::construct(data_ + i, rhs.data_[i]);
+        std::uninitialized_copy(rhs.data_, rhs.data_ + rhs.used_, data_);
+        used_ = rhs.used_;
     }
 
     Vector& operator=(const Vector& rhs)
     {
-        auto cpy {rhs};
+        auto cpy (rhs);
         std::swap(*this, cpy);
         return *this;
     }
@@ -202,13 +192,7 @@ public:
         if(empty())
             throw std::underflow_error{"try to pop element from empty vector"};
         used_--;
-        detail::destroy(data_ + used_);
-    }
-
-    void clear()
-    {
-        detail::destroy(data_, data_ + used_);
-        used_ = 0;
+        std::destroy_at(data_ + used_);
     }
 
     void reserve(size_type newsz)
@@ -217,33 +201,38 @@ public:
             return;
         
         auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
-
         std::uninitialized_move(data_, data_ + used_, new_data);
+
+        std::destroy(data_, data_ + used_);
         ::operator delete(data_);
         data_ = new_data;
         size_ = newsz;
     }
 
-    void resize(size_type newsz)
+private:
+    template<typename Initializer>
+    void resize(size_type newsz, Initializer initializer)
     {
         if (newsz <= used_)
-            detail::destroy(data_ + newsz, data_ + used_);
+            std::destroy(data_ + newsz, data_ + used_);
         else if (newsz > used_ && newsz <= size_)
-            std::uninitialized_default_construct(data_ + used_, data_ + newsz);
+            initializer(data_ + used_, data_ + newsz);
         else
         {
             auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
             std::uninitialized_move(data_, data_ + used_, new_data);
             try 
             {
-                std::uninitialized_default_construct(new_data + used_, new_data + newsz);
+                initializer(new_data + used_, new_data + newsz);
             }
             catch(...)
             {
                 std::move(new_data, new_data + used_, data_);
+                std::destroy(new_data, new_data + used_);
                 ::operator delete(new_data);
                 throw;
             }
+            std::destroy(data_, data_ + used_);
             ::operator delete(data_);
             data_ = new_data;
             size_ = newsz;
@@ -251,41 +240,32 @@ public:
         used_ = newsz;
     }
 
+public:
+    void resize(size_type newsz)
+    {
+        resize(newsz, std::uninitialized_default_construct);
+    }
+
     void resize(size_type newsz, const_reference value)
     {
-        if (newsz <= used_)
-            detail::destroy(data_ + newsz, data_ + used_);
-        else if (newsz > used_ && newsz <= size_)
-            std::uninitialized_fill(data_ + used_, data_ + newsz, value);
-        else
-        {
-            auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
-            std::uninitialized_move(data_, data_ + used_, new_data);
-            try 
-            {
-                std::uninitialized_fill(new_data + used_, new_data + newsz, value);
-            }
-            catch(...)
-            {
-                std::move(new_data, new_data + used_, data_);
-                ::operator delete(new_data);
-                throw;
-            }
-            ::operator delete(data_);
-            data_ = new_data;
-            size_ = newsz;
-        } 
-        used_ = newsz;
+        resize(newsz, [value](pointer first, pointer last){std::uninitialized_fill(first, last, value);});
     }
 
     void shrink_to_fit()
     {
         auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * used_));
-
         std::uninitialized_move(data_, data_ + used_, new_data);
+
+        std::destroy(data_, data_ + used_);
         ::operator delete(data_);
         data_ = new_data;
         size_ = used_;
+    }
+
+    void clear()
+    {
+        std::destroy(data_, data_ + used_);
+        used_ = 0;
     }
 
     Iterator begin() {return Iterator{data_};}

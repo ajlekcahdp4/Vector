@@ -5,26 +5,39 @@
 template<typename T>
 bool vec_cmp(const Container::Vector<T>& myvec, const std::vector<T>& stdvec)
 {
-    return !std::lexicographical_compare(myvec.begin(), myvec.end(), stdvec.begin(), stdvec.end())
-    && !12   std::lexicographical_compare(stdvec.begin(), stdvec.end(), myvec.begin(), myvec.end());
+    return std::lexicographical_compare_three_way(myvec.begin(), myvec.end(), stdvec.begin(), stdvec.end()) == 0;
 }
+
+template<typename T>
+bool vec_cmp(const Container::Vector<T>& vec1, const Container::Vector<T>& vec2)
+{
+    return std::lexicographical_compare_three_way(vec1.begin(), vec1.end(), vec2.begin(), vec2.end()) == 0;
+}
+
 
 struct Throwable
 {
+    static inline bool throw_on;
     static inline int a;
+    std::vector<int> vec {};
+
     Throwable()
     {
-        a++;
-        if (a % 50 == 0)
+        if (a % 50 == 0 && throw_on)
             throw std::exception{};
-    }   
+        a++;
+        vec = std::vector<int>(7, 16);
+    }  
 
     Throwable(const Throwable&): Throwable() {}
     Throwable(Throwable&&): Throwable() {}
 
     Throwable& operator=(const Throwable&) = default;
     Throwable& operator=(Throwable&&) = default;
-    ~Throwable() = default;
+    ~Throwable()
+    {
+        a--;
+    }
 };
 
 TEST(Vector, Ctors)
@@ -54,10 +67,69 @@ TEST(Vector, Ctors)
     EXPECT_TRUE(vec_cmp(vec5, example));
 
     Throwable::a = 0;
+    Throwable::throw_on = true;
 
     EXPECT_NO_THROW(Container::Vector<Throwable> vec6 (49););
-    Throwable::a = 0;
     EXPECT_ANY_THROW(Container::Vector<Throwable> vec7 (51););
+}
+
+TEST(Vector, BigFive)
+{
+    Container::Vector<int> example {1, 2, 3, 4, 5, 6, 7, 8};
+    
+    Container::Vector<int> vec1 (example);
+    EXPECT_TRUE(vec_cmp(vec1, example));
+
+    Container::Vector<int> vec2 {1, 2, 3, 4};
+    vec2 = example;
+    EXPECT_TRUE(vec_cmp(vec2, example));
+
+    Container::Vector<int> vec3 (std::move(vec1));
+    EXPECT_TRUE(vec_cmp(vec3, example));
+
+    Container::Vector<int> vec4 (16, 42);
+    vec4 = std::move(vec2);
+    EXPECT_TRUE(vec_cmp(vec4, example));
+}
+
+TEST(Vector, BigFiveExceptions)
+{
+    EXPECT_EQ(Throwable::a, 0);
+    
+    if (true){
+    Throwable::throw_on = false;
+
+    Container::Vector<Throwable> example1(69);
+    Container::Vector<Throwable> example2(69);
+    Container::Vector<Throwable> example3(69);
+    Container::Vector<Throwable> example4(69);
+
+    Throwable::throw_on = true;
+
+    auto act_a = Throwable::a;
+    EXPECT_ANY_THROW(Container::Vector vec1 (example1););
+    EXPECT_EQ(Throwable::a, act_a);
+
+    Throwable::throw_on = false;
+    Container::Vector<Throwable> vec2 (42);
+    Throwable::throw_on = true;
+
+    act_a = Throwable::a;
+    EXPECT_ANY_THROW(vec2 = example2;);
+    EXPECT_EQ(Throwable::a, act_a);
+    EXPECT_EQ(vec2.size(), 42);
+
+    EXPECT_NO_THROW(Container::Vector vec3 (std::move(example3)););
+
+    Throwable::throw_on = false;
+    Container::Vector<Throwable> vec4 (42);
+    Throwable::throw_on = true;
+
+    EXPECT_NO_THROW(vec4 = std::move(example4););
+    EXPECT_EQ(vec4.size(), 69);
+    }
+    
+    EXPECT_EQ(Throwable::a, 0);
 }
 
 int main(int argc, char** argv)
