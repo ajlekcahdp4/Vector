@@ -173,6 +173,117 @@ TEST(Vector, reserve)
         EXPECT_EQ(*vec_ptr[i], i);
 }
 
+TEST(Vector, reserveExceptions)
+{
+    Throwable::a = 0;
+    if (true) {
+    Throwable::throw_on = false;
+    Container::Vector<Throwable> vec (69);
+    Throwable::throw_on = true;
+    
+    vec.reserve(20);
+    EXPECT_EQ(vec.size(), 69);
+    EXPECT_EQ(vec.capacity(), 69);
+
+    vec.reserve(69);
+    EXPECT_EQ(vec.size(), 69);
+    EXPECT_EQ(vec.capacity(), 69);
+
+    EXPECT_ANY_THROW(vec.reserve(80););
+    EXPECT_EQ(vec.size(), 69);
+    EXPECT_EQ(vec.capacity(), 69);
+    }
+    EXPECT_EQ(Throwable::a, 0);
+}
+
+TEST(Vector, resize)
+{
+    Container::Vector<int> vec (42, 42);
+    
+    vec.resize(10);
+    EXPECT_EQ(vec.size(), 10);
+    EXPECT_EQ(vec.capacity(), 42);
+    for (auto i = 0; i < 10; i++)
+        EXPECT_EQ(vec[i], 42);
+
+    vec.resize(42);
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 42);
+    for (auto i = 0; i < 10; i++)
+        EXPECT_EQ(vec[i], 42);
+    for (auto i = 10; i < 42; i++)
+        EXPECT_EQ(vec[i], 0);
+
+    vec.resize(42);
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 42);
+    for (auto i = 0; i < 10; i++)
+        EXPECT_EQ(vec[i], 42);
+    for (auto i = 10; i < 42; i++)
+        EXPECT_EQ(vec[i], 0);
+
+    vec.resize(10);
+    vec.resize(42, 42);
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 42);
+    for (auto i = 0; i < 42; i++)
+        EXPECT_EQ(vec[i], 42);
+
+    vec.resize(80);
+    EXPECT_EQ(vec.size(), 80);
+    EXPECT_EQ(vec.capacity(), 80);
+    for (auto i = 0; i < 42; i++)
+        EXPECT_EQ(vec[i], 42);
+    for (auto i = 42; i < 80; i++)
+        EXPECT_EQ(vec[i], 0);
+
+    vec.resize(100, 42);
+    EXPECT_EQ(vec.size(), 100);
+    EXPECT_EQ(vec.capacity(), 100);
+    for (auto i = 0; i < 42; i++)
+        EXPECT_EQ(vec[i], 42);
+    for (auto i = 42; i < 80; i++)
+        EXPECT_EQ(vec[i], 0);
+    for (auto i = 80; i < 100; i++)
+        EXPECT_EQ(vec[i], 42);
+#define UNIQUE
+#ifdef UNIQUE
+    Container::Vector<std::unique_ptr<int>> vec_ptr {};
+    for (auto i = 0; i < 42; i++)
+        vec_ptr.push_back(std::make_unique<int>(42));
+
+    vec_ptr.resize(420);
+    EXPECT_EQ(vec_ptr.size(), 420   );
+    for (auto i = 0; i < 42; i++)
+        EXPECT_EQ(*vec_ptr[i], 42);
+    for (auto i = 42; i < 420; i++)
+        EXPECT_EQ(vec_ptr[i].get(), nullptr);
+#endif
+}
+
+TEST(Vector, resizeExceptions)
+{
+    Throwable::a = 0;
+    if (true) {
+    Throwable::throw_on = false;
+    Container::Vector<Throwable> vec (100);
+    Throwable::throw_on = true;
+
+    EXPECT_NO_THROW(vec.resize(42););
+    EXPECT_EQ(vec.capacity(), 100);
+    EXPECT_EQ(vec.size(), 42);
+
+    EXPECT_ANY_THROW(vec.resize(99););
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 100);
+
+    EXPECT_ANY_THROW(vec.resize(1000));
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 100);
+    }
+    EXPECT_EQ(Throwable::a, 0);
+}
+
 int main(int argc, char** argv)
 {
     testing::InitGoogleTest(&argc, argv);

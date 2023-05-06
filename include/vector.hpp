@@ -22,6 +22,17 @@ constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt l
         return std::uninitialized_copy(first, last, d_first);   
 }
 
+template<typename FwdIt>
+constexpr void uninitialized_default_construct(FwdIt first, FwdIt last)
+requires std::is_default_constructible<typename std::iterator_traits<FwdIt>::value_type>::value
+{
+    using value_type = typename std::iterator_traits<FwdIt>::value_type;
+    if constexpr (std::is_copy_constructible<value_type>::value)
+        std::uninitialized_fill(first, last, value_type{});
+    else
+        std::uninitialized_default_construct(first, last);
+}
+
 template<typename T>
 class VectorBuf
 {
@@ -92,7 +103,7 @@ public:
 
     explicit Vector(size_type size): base(size)
     {
-        std::uninitialized_default_construct(data_, data_ + size_);
+        detail::uninitialized_default_construct(data_, data_ + size_);
         used_ = size_;
     }
 
@@ -221,7 +232,7 @@ public:
     }
 
 private:
-    template<typename Initializer>
+    template<class Initializer>
     void resize(size_type newsz, Initializer initializer)
     {
         if (newsz <= used_)
@@ -255,12 +266,12 @@ private:
 public:
     void resize(size_type newsz)
     {
-        resize(newsz, std::uninitialized_default_construct);
+        resize(newsz, [](pointer first, pointer last){detail::uninitialized_default_construct(first, last);});
     }
 
     void resize(size_type newsz, const_reference value)
     {
-        resize(newsz, [value](pointer first, pointer last){std::uninitialized_fill(first, last, value);});
+        resize(newsz, [&value](pointer first, pointer last){std::uninitialized_fill(first, last, value);});
     }
 
     void shrink_to_fit()
