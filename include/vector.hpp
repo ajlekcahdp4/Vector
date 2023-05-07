@@ -258,8 +258,6 @@ private:
             }
             catch (...)
             {
-                if constexpr (std::is_nothrow_move_assignable<value_type>::value)
-                    std::move(new_data, new_data + used_, data_);
                 std::destroy(new_data, new_data + used_);
                 throw;
             }
