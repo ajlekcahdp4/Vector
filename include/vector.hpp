@@ -288,7 +288,7 @@ public:
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);
-        data_ = new_data;
+        data_ = new_data_scoped.release();
         size_ = used_;
     }
 
