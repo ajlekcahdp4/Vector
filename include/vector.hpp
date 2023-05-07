@@ -81,6 +81,7 @@ protected:
 template<typename T>
 class Vector final: private detail::VectorBuf<T>
 {
+public:
     using value_type      = T;
     using pointer         = T*;
     using const_pointer   = const T*;
@@ -93,8 +94,7 @@ class Vector final: private detail::VectorBuf<T>
     using ConstIterator = const_pointer;
     using ReverseIterator      = std::reverse_iterator<Iterator>;
     using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
-    
-
+private:   
     using base::size_;
     using base::used_;
     using base::data_;
@@ -153,13 +153,13 @@ public:
     
     reference at(size_type index) &  
     {
-        if(index >= used_)
+        if (index >= used_)
             throw std::out_of_range{"try to get acces to element out of array"};
         return data_[index];
     }
     const_reference at(size_type index) const&
     {
-        if(index >= used_)
+        if (index >= used_)
             throw std::out_of_range{"try to get acces to element out of array"};
         return data_[index];
     }
@@ -217,20 +217,28 @@ public:
         std::destroy_at(data_ + used_);
     }
 
+private:
+    struct raw_deleter
+    {
+        void operator()(void* ptr) const {::operator delete(ptr);}
+    };
+    using scoped_raw_ptr = std::unique_ptr<value_type, raw_deleter>;
+
+public:
     void reserve(size_type newsz)
     {
         if (size_ >= newsz)
             return;
         
-        auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
+        scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * newsz))};
+        auto new_data = new_data_scoped.get();
         detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);
-        data_ = new_data;
+        data_ = new_data_scoped.release();
         size_ = newsz;
     }
-
 private:
     template<class Initializer>
     void resize(size_type newsz, Initializer initializer)
@@ -241,23 +249,23 @@ private:
             initializer(data_ + used_, data_ + newsz);
         else
         {
-            auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * newsz));
+            scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * newsz))};
+            auto new_data = new_data_scoped.get();
             detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
             try 
             {
                 initializer(new_data + used_, new_data + newsz);
             }
-            catch(...)
+            catch (...)
             {
                 if constexpr (std::is_nothrow_move_assignable<value_type>::value)
                     std::move(new_data, new_data + used_, data_);
                 std::destroy(new_data, new_data + used_);
-                ::operator delete(new_data);
                 throw;
             }
             std::destroy(data_, data_ + used_);
             ::operator delete(data_);
-            data_ = new_data;
+            data_ = new_data_scoped.release();
             size_ = newsz;
         } 
         used_ = newsz;
@@ -276,7 +284,8 @@ public:
 
     void shrink_to_fit()
     {
-        auto new_data = static_cast<pointer>(::operator new(sizeof(value_type) * used_));
+        scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * used_))};
+        auto new_data = new_data_scoped.get();
         detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
