@@ -8,10 +8,7 @@ namespace Container
 
 namespace detail
 {
-
-template<typename T>
-void construct(T* p, T&& rhs) {new (p) T{std::forward<T>(rhs)};}
-
+//give a strong guarantee if value_type is copy constructible 
 template<typename InpIt, typename OutIt>
 constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt last, OutIt d_first)
 {
@@ -22,9 +19,8 @@ constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt l
         return std::uninitialized_copy(first, last, d_first);   
 }
 
-template<typename FwdIt>
+template<std::forward_iterator FwdIt>
 constexpr void uninitialized_default_construct(FwdIt first, FwdIt last)
-requires std::is_default_constructible<typename std::iterator_traits<FwdIt>::value_type>::value
 {
     using value_type = typename std::iterator_traits<FwdIt>::value_type;
     if constexpr (std::is_copy_constructible<value_type>::value)
@@ -176,7 +172,7 @@ public:
         if (need_reserve_up())
             reserve(2 * size_ + 1);
         
-        detail::construct(data_ + used_++, std::move(val));
+        std::construct_at(data_ + used_++, std::move(val));
     }
 private:
     bool need_reserve_up() const {return (used_ == size_);}

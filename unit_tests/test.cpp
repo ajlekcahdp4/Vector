@@ -116,13 +116,13 @@ TEST(Vector, bigFiveUnique)
 
     Container::Vector vec1 (std::move(vec));
     for (int i = 0; i < 42; i++)
-        EXPECT_EQ(vec1[i], i);
+        EXPECT_EQ(*vec1[i], i);
 
     Container::Vector<std::unique_ptr<int>> vec2 {};
     vec2.push_back(std::make_unique<int>(79));
     vec2 = std::move(vec1);
     for (int i = 0; i < 42; i++)
-        EXPECT_EQ(vec2[i], i);
+        EXPECT_EQ(*vec2[i], i);
 }
 
 TEST(Vector, bigFiveExceptions)
