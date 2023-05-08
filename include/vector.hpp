@@ -1,6 +1,6 @@
 #pragma once
 #include <initializer_list>
-#include <memory>
+#include "my_ranges.hpp"
 #include <iterator>
 
 namespace Container
@@ -8,27 +8,6 @@ namespace Container
 
 namespace detail
 {
-//give a strong guarantee if value_type is copy constructible 
-template<typename InpIt, typename OutIt>
-constexpr OutIt strong_guarantee_uninitialized_move_or_copy(InpIt first, InpIt last, OutIt d_first)
-{
-    using value_type = typename std::iterator_traits<InpIt>::value_type;
-    if constexpr (!std::is_copy_constructible<value_type>::value || std::is_nothrow_move_constructible<value_type>::value)
-        return std::uninitialized_move(first, last, d_first);
-    else
-        return std::uninitialized_copy(first, last, d_first);   
-}
-
-template<std::forward_iterator FwdIt>
-constexpr void uninitialized_default_construct(FwdIt first, FwdIt last)
-{
-    using value_type = typename std::iterator_traits<FwdIt>::value_type;
-    if constexpr (std::is_copy_constructible<value_type>::value)
-        std::uninitialized_fill(first, last, value_type{});
-    else
-        std::uninitialized_default_construct(first, last);
-}
-
 template<typename T>
 class VectorBuf
 {
@@ -99,7 +78,7 @@ public:
 
     explicit Vector(size_type size): base(size)
     {
-        detail::uninitialized_default_construct(data_, data_ + size_);
+        Ranges::uninitialized_default_construct(data_, data_ + size_);
         used_ = size_;
     }
 
@@ -176,8 +155,10 @@ public:
         
         std::construct_at(data_ + used_++, std::move(val));
     }
+
 private:
     bool need_reserve_up() const {return (used_ == size_);}
+
 public:
     const_reference back() const
     {
@@ -227,13 +208,14 @@ public:
         
         scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * newsz))};
         auto new_data = new_data_scoped.get();
-        detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
+        Ranges::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);
         data_ = new_data_scoped.release();
         size_ = newsz;
     }
+
 private:
     template<class Initializer>
     void resize(size_type newsz, Initializer initializer)
@@ -246,7 +228,7 @@ private:
         {
             scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * newsz))};
             auto new_data = new_data_scoped.get();
-            detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
+            Ranges::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
             try 
             {
                 initializer(new_data + used_, new_data + newsz);
@@ -270,7 +252,7 @@ private:
 public:
     void resize(size_type newsz)
     {
-        resize(newsz, [](pointer first, pointer last){detail::uninitialized_default_construct(first, last);});
+        resize(newsz, [](pointer first, pointer last){Ranges::uninitialized_default_construct(first, last);});
     }
 
     void resize(size_type newsz, const_reference value)
@@ -282,7 +264,7 @@ public:
     {
         scoped_raw_ptr new_data_scoped {static_cast<pointer>(::operator new(sizeof(value_type) * used_))};
         auto new_data = new_data_scoped.get();
-        detail::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
+        Ranges::strong_guarantee_uninitialized_move_or_copy(data_, data_ + used_, new_data);
 
         std::destroy(data_, data_ + used_);
         ::operator delete(data_);

@@ -30,7 +30,7 @@ struct Throwable
     }  
 
     Throwable(const Throwable&): Throwable() {}
-    Throwable(Throwable&& rhs): Throwable() {}
+    Throwable(Throwable&& rhs): Throwable() {rhs.vec.clear();}
 
     Throwable& operator=(const Throwable&) = default;
     Throwable& operator=(Throwable&&) = default;
@@ -105,6 +105,19 @@ TEST(Vector, push_back)
     vec.reserve(1000);
     for (int i = 100; i < 1000; i++)
         EXPECT_EQ(1000, (vec.push_back(i), vec.capacity()));
+}
+
+TEST(Vector, push_backUnique)
+{
+    Container::Vector<std::unique_ptr<int>> vec {};
+    vec.push_back(std::make_unique<int>(5));
+    EXPECT_EQ(*vec.back(), 5);
+    EXPECT_EQ(vec.size(), 1);
+
+    for (int i = 1; i < 100; i++)
+        vec.push_back(std::make_unique<int>(i));
+    EXPECT_EQ(vec.size(), 100);
+    EXPECT_LT(vec.size(), vec.capacity());
 }
 
 TEST(Vector, bigFive)
@@ -428,7 +441,7 @@ TEST(Vector, shrink_to_fit)
     EXPECT_EQ(vec.capacity(), 73);
 }
 
-TEST(Vector, shrink_to_firUnique)
+TEST(Vector, shrink_to_fitUnique)
 {
     Container::Vector<std::unique_ptr<int>> vec {};
     vec.reserve(420);
@@ -442,6 +455,41 @@ TEST(Vector, shrink_to_firUnique)
     vec.shrink_to_fit();
     EXPECT_EQ(vec.size(), 10);
     EXPECT_EQ(vec.capacity(), 10);
+}
+
+TEST(Vector, shrink_to_fitExceptions)
+{
+    Throwable::a = 0;
+    if (true) {
+    Throwable::throw_on = false;
+    Container::Vector<Throwable> vec (100);
+    Throwable::throw_on = true;
+
+    vec.resize(60);
+    EXPECT_ANY_THROW(vec.shrink_to_fit(););
+    EXPECT_EQ(vec.size(), 60);
+    EXPECT_EQ(vec.capacity(), 100);
+    for (int i = 0; i < 60; i++)
+    {
+        EXPECT_EQ(vec[i].vec.size(), 7);
+        EXPECT_EQ(vec[i].vec[4], 16);
+    }
+
+    Throwable::throw_on = false;
+    vec.resize(420);
+    vec.resize(200);
+    Throwable::throw_on = true;
+
+    EXPECT_ANY_THROW(vec.shrink_to_fit());
+    EXPECT_EQ(vec.size(), 200);
+    EXPECT_EQ(vec.capacity(), 420);
+    for (int i = 0; i < 200; i++)
+    {
+        EXPECT_EQ(vec[i].vec.size(), 7);
+        EXPECT_EQ(vec[i].vec[4], 16);
+    }
+    }
+    EXPECT_EQ(Throwable::a, 0);
 }
 
 int main(int argc, char** argv)
