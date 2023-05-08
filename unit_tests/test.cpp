@@ -30,7 +30,7 @@ struct Throwable
     }  
 
     Throwable(const Throwable&): Throwable() {}
-    Throwable(Throwable&&): Throwable() {}
+    Throwable(Throwable&& rhs): Throwable() {}
 
     Throwable& operator=(const Throwable&) = default;
     Throwable& operator=(Throwable&&) = default;
@@ -87,6 +87,24 @@ TEST(Vector, constructorsExceptions)
     EXPECT_ANY_THROW(Container::Vector<Throwable> vec (svec.begin(), svec.end()););
     }
     EXPECT_EQ(Throwable::a, 0);
+}
+
+TEST(Vector, push_back)
+{
+    Container::Vector<int> vec {1, 2, 3, 4};
+    vec.push_back(5);
+    EXPECT_EQ(vec.back(), 5);
+    EXPECT_EQ(vec[4], 5);
+    auto cap_before = vec.capacity();
+    for (int i = 6; i < 100; i++)
+        vec.push_back(i);
+
+    EXPECT_GE(vec.capacity(), vec.size());
+    EXPECT_GE(vec.capacity(), cap_before);
+
+    vec.reserve(1000);
+    for (int i = 100; i < 1000; i++)
+        EXPECT_EQ(1000, (vec.push_back(i), vec.capacity()));
 }
 
 TEST(Vector, bigFive)
@@ -239,21 +257,17 @@ TEST(Vector, resize)
 {
     Container::Vector<int> vec (42, 42);
     
+    auto data_before = vec.data();
     vec.resize(10);
+    EXPECT_EQ(data_before, vec.data());
     EXPECT_EQ(vec.size(), 10);
     EXPECT_EQ(vec.capacity(), 42);
     for (auto i = 0; i < 10; i++)
         EXPECT_EQ(vec[i], 42);
 
+    data_before = vec.data();
     vec.resize(42);
-    EXPECT_EQ(vec.size(), 42);
-    EXPECT_EQ(vec.capacity(), 42);
-    for (auto i = 0; i < 10; i++)
-        EXPECT_EQ(vec[i], 42);
-    for (auto i = 10; i < 42; i++)
-        EXPECT_EQ(vec[i], 0);
-
-    vec.resize(42);
+    EXPECT_EQ(data_before, vec.data());
     EXPECT_EQ(vec.size(), 42);
     EXPECT_EQ(vec.capacity(), 42);
     for (auto i = 0; i < 10; i++)
@@ -262,7 +276,9 @@ TEST(Vector, resize)
         EXPECT_EQ(vec[i], 0);
 
     vec.resize(10);
+    data_before = vec.data();
     vec.resize(42, 42);
+    EXPECT_EQ(data_before, vec.data());
     EXPECT_EQ(vec.size(), 42);
     EXPECT_EQ(vec.capacity(), 42);
     for (auto i = 0; i < 42; i++)
@@ -301,6 +317,33 @@ TEST(Vector, resizeUnique)
         EXPECT_EQ(vec_ptr[i].get(), nullptr);
 }
 
+struct ThrowCopyable
+{
+    static inline int  a;
+    static inline bool throw_on;
+    std::vector<int> vec;
+    
+    ThrowCopyable()
+    {
+        if (a > 0 && a % 50 == 0 && throw_on)
+            throw std::exception{};
+        a++;
+        vec = std::vector<int>(7, 16);
+    }  
+
+    ThrowCopyable(const ThrowCopyable&): ThrowCopyable() {}
+    ThrowCopyable(ThrowCopyable&& rhs) noexcept 
+    {
+        a++;
+        vec = std::vector<int>(7, 16);
+        rhs.vec.clear();
+    }
+
+    ThrowCopyable& operator=(const ThrowCopyable&) = default;
+    ThrowCopyable& operator=(ThrowCopyable&&) noexcept = default;
+    ~ThrowCopyable() {a--;}
+};
+
 TEST(Vector, resizeExceptions)
 {
     Throwable::a = 0;
@@ -308,6 +351,42 @@ TEST(Vector, resizeExceptions)
     Throwable::throw_on = false;
     Container::Vector<Throwable> vec (100);
     Throwable::throw_on = true;
+
+    auto data_before = vec.data();
+    EXPECT_NO_THROW(vec.resize(42););
+    EXPECT_EQ(vec.data(), data_before);
+    EXPECT_EQ(vec.capacity(), 100);
+    EXPECT_EQ(vec.size(), 42);
+
+    data_before = vec.data();
+    EXPECT_ANY_THROW(vec.resize(99););
+    EXPECT_EQ(vec.data(), data_before);
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 100);
+
+    data_before = vec.data();
+    EXPECT_ANY_THROW(vec.resize(1000););
+    EXPECT_EQ(vec.data(), data_before);
+    EXPECT_EQ(vec.size(), 42);
+    EXPECT_EQ(vec.capacity(), 100);
+    }
+    EXPECT_EQ(Throwable::a, 0);
+
+    Throwable::a = 0;
+    if (true) {
+        Throwable::throw_on = true;
+        Container::Vector<Throwable> vec (20);
+        auto data_before = vec.data();
+        EXPECT_ANY_THROW(vec.resize(40););
+        EXPECT_EQ(vec.data(), data_before);
+    }
+    EXPECT_EQ(Throwable::a, 0);
+
+    ThrowCopyable::a = 0;
+    if (true) {
+    ThrowCopyable::throw_on = false;
+    Container::Vector<ThrowCopyable> vec (100);
+    ThrowCopyable::throw_on = true;
 
     EXPECT_NO_THROW(vec.resize(42););
     EXPECT_EQ(vec.capacity(), 100);
@@ -317,11 +396,13 @@ TEST(Vector, resizeExceptions)
     EXPECT_EQ(vec.size(), 42);
     EXPECT_EQ(vec.capacity(), 100);
 
-    EXPECT_ANY_THROW(vec.resize(1000));
+    auto data_before = vec.data();
+    EXPECT_ANY_THROW(vec.resize(1000););
+    EXPECT_EQ(vec.data(), data_before);
     EXPECT_EQ(vec.size(), 42);
     EXPECT_EQ(vec.capacity(), 100);
     }
-    EXPECT_EQ(Throwable::a, 0);
+    EXPECT_EQ(ThrowCopyable::a, 0);
 }
 
 TEST(Vector, shrink_to_fit)

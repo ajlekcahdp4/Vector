@@ -143,6 +143,8 @@ public:
     size_type size() const {return used_;}
     size_type capacity() const {return size_;}
     bool empty() const {return used_ == 0;}
+    pointer data() {return data_;}
+    const_pointer data() const {return data_;}
 
     reference       operator[](size_type index) &      noexcept {return data_[index];}
     const_reference operator[](size_type index) const& noexcept {return data_[index];}
@@ -214,10 +216,7 @@ public:
     }
 
 private:
-    struct raw_deleter
-    {
-        void operator()(void* ptr) const {::operator delete(ptr);}
-    };
+    struct raw_deleter {void operator()(void* ptr) const {::operator delete(ptr);}};
     using scoped_raw_ptr = std::unique_ptr<value_type, raw_deleter>;
 
 public:
@@ -254,6 +253,9 @@ private:
             }
             catch (...)
             {
+                if constexpr ((!std::is_copy_constructible<value_type>::value || 
+                std::is_nothrow_move_constructible<value_type>::value) && std::is_nothrow_move_assignable<value_type>::value)
+                    std::move(new_data, new_data + used_, data_);
                 std::destroy(new_data, new_data + used_);
                 throw;
             }
