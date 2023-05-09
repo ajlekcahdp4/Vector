@@ -174,14 +174,14 @@ public:
         return data_[used_ - 1];
     }
 
-    reference front()
+    const_reference front() const
     {
         if (empty())
             throw std::underflow_error{"try to get back from empty vector"};
         return data_[0];
     }
 
-    const_reference front() const
+    reference front()
     {
         if (empty())
             throw std::underflow_error{"try to get back from empty vector"};
