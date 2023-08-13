@@ -14,7 +14,6 @@ bool vec_cmp(const Container::Vector<T>& vec1, const Container::Vector<T>& vec2)
     return std::lexicographical_compare_three_way(vec1.begin(), vec1.end(), vec2.begin(), vec2.end()) == 0;
 }
 
-
 struct Throwable
 {
     static inline bool throw_on;
@@ -490,6 +489,108 @@ TEST(Vector, shrink_to_fitExceptions)
     }
     }
     EXPECT_EQ(Throwable::a, 0);
+}
+
+TEST(Vector, iterators)
+{
+    Container::Vector<int> vec {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    const Container::Vector<int> cvec {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    auto itr = vec.begin();
+    EXPECT_EQ(*itr, 0);
+    EXPECT_EQ(*(++itr), 1);
+    EXPECT_EQ(*itr, 1);
+    EXPECT_EQ(*(itr++), 1);
+    EXPECT_EQ(*itr, 2);
+    EXPECT_EQ(itr[-1], 1);
+    EXPECT_EQ(itr[0], 2);
+    EXPECT_EQ(itr[1], 3);
+    EXPECT_EQ(*(itr += 1), 3);
+    EXPECT_EQ(*(itr -= 1), 2);
+    EXPECT_EQ(*(itr - 1), 1);
+    EXPECT_EQ(*(itr + 1), 3);
+    EXPECT_EQ(std::distance(vec.begin(), vec.end()), vec.size());
+
+    auto citr = vec.cbegin();
+    EXPECT_EQ(*citr, 0);
+    EXPECT_EQ(*(++citr), 1);
+    EXPECT_EQ(*citr, 1);
+    EXPECT_EQ(*(citr++), 1);
+    EXPECT_EQ(*citr, 2);
+    EXPECT_EQ(citr[-1], 1);
+    EXPECT_EQ(citr[0], 2);
+    EXPECT_EQ(citr[1], 3);
+    EXPECT_EQ(*(citr += 1), 3);
+    EXPECT_EQ(*(citr -= 1), 2);
+    EXPECT_EQ(*(citr - 1), 1);
+    EXPECT_EQ(*(citr + 1), 3);
+    EXPECT_EQ(std::distance(vec.cbegin(), vec.cend()), vec.size());
+
+    auto ccitr = cvec.begin();
+    EXPECT_EQ(*ccitr, 0);
+    EXPECT_EQ(*(++ccitr), 1);
+    EXPECT_EQ(*ccitr, 1);
+    EXPECT_EQ(*(ccitr++), 1);
+    EXPECT_EQ(*ccitr, 2);
+    EXPECT_EQ(ccitr[-1], 1);
+    EXPECT_EQ(ccitr[0], 2);
+    EXPECT_EQ(ccitr[1], 3);
+    EXPECT_EQ(*(ccitr += 1), 3);
+    EXPECT_EQ(*(ccitr -= 1), 2);
+    EXPECT_EQ(*(ccitr - 1), 1);
+    EXPECT_EQ(*(ccitr + 1), 3);
+    EXPECT_EQ(std::distance(cvec.begin(), cvec.end()), cvec.size());
+}
+
+TEST(Vector, reverse_iterators)
+{
+    Container::Vector<int> vec {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+    const Container::Vector<int> cvec {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+
+    auto itr = vec.rbegin();
+    EXPECT_EQ(*itr, 0);
+    EXPECT_EQ(*(++itr), 1);
+    EXPECT_EQ(*itr, 1);
+    EXPECT_EQ(*(itr++), 1);
+    EXPECT_EQ(*itr, 2);
+    EXPECT_EQ(itr[-1], 1);
+    EXPECT_EQ(itr[0], 2);
+    EXPECT_EQ(itr[1], 3);
+    EXPECT_EQ(*(itr += 1), 3);
+    EXPECT_EQ(*(itr -= 1), 2);
+    EXPECT_EQ(*(itr - 1), 1);
+    EXPECT_EQ(*(itr + 1), 3);
+    EXPECT_EQ(std::distance(vec.rbegin(), vec.rend()), vec.size());
+
+    auto citr = vec.crbegin();
+    EXPECT_EQ(*citr, 0);
+    EXPECT_EQ(*(++citr), 1);
+    EXPECT_EQ(*citr, 1);
+    EXPECT_EQ(*(citr++), 1);
+    EXPECT_EQ(*citr, 2);
+    EXPECT_EQ(citr[-1], 1);
+    EXPECT_EQ(citr[0], 2);
+    EXPECT_EQ(citr[1], 3);
+    EXPECT_EQ(*(citr += 1), 3);
+    EXPECT_EQ(*(citr -= 1), 2);
+    EXPECT_EQ(*(citr - 1), 1);
+    EXPECT_EQ(*(citr + 1), 3);
+    EXPECT_EQ(std::distance(vec.crbegin(), vec.crend()), vec.size());
+
+    auto ccitr = cvec.rbegin();
+    EXPECT_EQ(*ccitr, 0);
+    EXPECT_EQ(*(++ccitr), 1);
+    EXPECT_EQ(*ccitr, 1);
+    EXPECT_EQ(*(ccitr++), 1);
+    EXPECT_EQ(*ccitr, 2);
+    EXPECT_EQ(ccitr[-1], 1);
+    EXPECT_EQ(ccitr[0], 2);
+    EXPECT_EQ(ccitr[1], 3);
+    EXPECT_EQ(*(ccitr += 1), 3);
+    EXPECT_EQ(*(ccitr -= 1), 2);
+    EXPECT_EQ(*(ccitr - 1), 1);
+    EXPECT_EQ(*(ccitr + 1), 3);
+    EXPECT_EQ(std::distance(cvec.rbegin(), cvec.rend()), cvec.size());
 }
 
 int main(int argc, char** argv)
