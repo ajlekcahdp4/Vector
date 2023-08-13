@@ -125,16 +125,16 @@ public:
     pointer data() {return data_;}
     const_pointer data() const {return data_;}
 
-    reference       operator[](size_type index) &      noexcept {return data_[index];}
-    const_reference operator[](size_type index) const& noexcept {return data_[index];}
+    reference       operator[](size_type index)       noexcept {return data_[index];}
+    const_reference operator[](size_type index) const noexcept {return data_[index];}
     
-    reference at(size_type index) &  
+    reference at(size_type index)  
     {
         if (index >= used_)
             throw std::out_of_range{"try to get acces to element out of array"};
         return data_[index];
     }
-    const_reference at(size_type index) const&
+    const_reference at(size_type index) const
     {
         if (index >= used_)
             throw std::out_of_range{"try to get acces to element out of array"};

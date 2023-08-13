@@ -23,4 +23,4 @@ constexpr void uninitialized_default_construct(FwdIt first, FwdIt last)
     else
         std::uninitialized_default_construct(first, last);
 }
-}
+} // namespace Ranges
