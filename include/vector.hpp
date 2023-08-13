@@ -8,6 +8,94 @@ namespace Container
 
 namespace detail
 {
+
+template<typename P>
+struct Iterator
+{
+    using iterator_category = std::random_access_iterator_tag;
+    using difference_type   = std::ptrdiff_t;
+    using value_type        = std::remove_pointer_t<P>;
+    using reference         = value_type&;
+    using pointer           = P;
+
+private:
+    pointer ptr_;
+
+public:
+    Iterator(pointer ptr = nullptr): ptr_ {ptr} {}
+
+    reference operator*() const {return *ptr_;}
+    pointer operator->() const {return ptr_;}
+
+    Iterator& operator++()
+    {
+        ptr_++;
+        return *this;
+    }
+    Iterator operator++(int)
+    {
+        Iterator tmp (*this);
+        ++(*this);
+        return tmp;
+    }
+    Iterator& operator--()
+    {
+        ptr_--;
+        return *this;
+    }
+    Iterator operator--(int)
+    {
+        Iterator tmp (*this);
+        --(*this);
+        return tmp;
+    }
+
+    Iterator& operator+=(const difference_type& diff)
+    {
+        ptr_ += diff;
+        return *this;
+    }
+    Iterator& operator-=(const difference_type& diff)
+    {
+        ptr_ -= diff;
+        return *this;
+    }
+
+    difference_type operator-(const Iterator& itr) const
+    {
+        return ptr_ - itr.ptr_;
+    }
+
+    reference operator[](const difference_type& diff) const
+    {
+        return ptr_[diff];
+    }
+
+    auto operator<=>(const Iterator& other) const = default;
+};
+
+template<typename P>
+Iterator<P> operator+(const Iterator<P>& itr, const typename Iterator<P>::difference_type& diff)
+{
+    Iterator itr_cpy (itr);
+    itr_cpy += diff;
+    return itr_cpy;
+}
+
+template<typename P>
+Iterator<P> operator+(const typename Iterator<P>::difference_type& diff, const Iterator<P>& itr)
+{
+    return itr + diff;
+}
+
+template<typename P>
+Iterator<P> operator-(const Iterator<P>& itr, const typename Iterator<P>::difference_type& diff)
+{
+    Iterator itr_cpy (itr);
+    itr_cpy -= diff;
+    return itr_cpy;
+}
+
 template<typename T>
 class VectorBuf
 {
@@ -50,7 +138,6 @@ protected:
         ::operator delete(data_);
     }
 };
-
 } // namespace detail
 
 template<typename T>
@@ -62,11 +149,11 @@ public:
     using const_pointer   = const T*;
     using reference       = T&;
     using const_reference = const T&;
-    using size_type       = typename std::size_t;
+    using size_type       = std::size_t;
     using base            = detail::VectorBuf<T>;
 
-    using Iterator      = pointer;
-    using ConstIterator = const_pointer;
+    using Iterator      = detail::Iterator<pointer>;
+    using ConstIterator = detail::Iterator<const_pointer>;
     using ReverseIterator      = std::reverse_iterator<Iterator>;
     using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
 private:   
