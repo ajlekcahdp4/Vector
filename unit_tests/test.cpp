@@ -491,6 +491,7 @@ TEST(Vector, shrink_to_fitExceptions)
     EXPECT_EQ(Throwable::a, 0);
 }
 
+
 TEST(Vector, iterators)
 {
     Container::Vector<int> vec {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
