@@ -10,7 +10,7 @@ namespace detail
 {
 
 template<typename P>
-struct Iterator
+struct iterator
 {
     using iterator_category = std::random_access_iterator_tag;
     using difference_type   = std::ptrdiff_t;
@@ -22,46 +22,46 @@ private:
     pointer ptr_;
 
 public:
-    Iterator(pointer ptr = nullptr): ptr_ {ptr} {}
+    iterator(pointer ptr = nullptr): ptr_ {ptr} {}
 
     reference operator*() const {return *ptr_;}
     pointer operator->() const {return ptr_;}
 
-    Iterator& operator++()
+    iterator& operator++()
     {
         ptr_++;
         return *this;
     }
-    Iterator operator++(int)
+    iterator operator++(int)
     {
-        Iterator tmp (*this);
+        iterator tmp (*this);
         ++(*this);
         return tmp;
     }
-    Iterator& operator--()
+    iterator& operator--()
     {
         ptr_--;
         return *this;
     }
-    Iterator operator--(int)
+    iterator operator--(int)
     {
-        Iterator tmp (*this);
+        iterator tmp (*this);
         --(*this);
         return tmp;
     }
 
-    Iterator& operator+=(const difference_type& diff)
+    iterator& operator+=(const difference_type& diff)
     {
         ptr_ += diff;
         return *this;
     }
-    Iterator& operator-=(const difference_type& diff)
+    iterator& operator-=(const difference_type& diff)
     {
         ptr_ -= diff;
         return *this;
     }
 
-    difference_type operator-(const Iterator& itr) const
+    difference_type operator-(const iterator& itr) const
     {
         return ptr_ - itr.ptr_;
     }
@@ -71,27 +71,27 @@ public:
         return ptr_[diff];
     }
 
-    auto operator<=>(const Iterator& other) const = default;
+    auto operator<=>(const iterator& other) const = default;
 };
 
 template<typename P>
-Iterator<P> operator+(const Iterator<P>& itr, const typename Iterator<P>::difference_type& diff)
+iterator<P> operator+(const iterator<P>& itr, const typename iterator<P>::difference_type& diff)
 {
-    Iterator itr_cpy (itr);
+    iterator itr_cpy (itr);
     itr_cpy += diff;
     return itr_cpy;
 }
 
 template<typename P>
-Iterator<P> operator+(const typename Iterator<P>::difference_type& diff, const Iterator<P>& itr)
+iterator<P> operator+(const typename iterator<P>::difference_type& diff, const iterator<P>& itr)
 {
     return itr + diff;
 }
 
 template<typename P>
-Iterator<P> operator-(const Iterator<P>& itr, const typename Iterator<P>::difference_type& diff)
+iterator<P> operator-(const iterator<P>& itr, const typename iterator<P>::difference_type& diff)
 {
-    Iterator itr_cpy (itr);
+    iterator itr_cpy (itr);
     itr_cpy -= diff;
     return itr_cpy;
 }
@@ -152,10 +152,10 @@ public:
     using size_type       = std::size_t;
     using base            = detail::VectorBuf<T>;
 
-    using Iterator      = detail::Iterator<pointer>;
-    using ConstIterator = detail::Iterator<const_pointer>;
-    using ReverseIterator      = std::reverse_iterator<Iterator>;
-    using ConstReverseIterator = std::reverse_iterator<ConstIterator>;
+    using iterator      = detail::iterator<pointer>;
+    using const_iterator = detail::iterator<const_pointer>;
+    using ReverseIterator      = std::reverse_iterator<iterator>;
+    using ConstReverseIterator = std::reverse_iterator<const_iterator>;
 private:   
     using base::size_;
     using base::used_;
@@ -365,14 +365,14 @@ public:
         used_ = 0;
     }
 
-    Iterator begin() {return Iterator{data_};}
-    Iterator end()   {return Iterator{data_ + used_};}
+    iterator begin() {return iterator{data_};}
+    iterator end()   {return iterator{data_ + used_};}
 
-    ConstIterator begin() const {return ConstIterator{data_};}
-    ConstIterator end()   const {return ConstIterator{data_ + used_};}
+    const_iterator begin() const {return const_iterator{data_};}
+    const_iterator end()   const {return const_iterator{data_ + used_};}
 
-    ConstIterator cbegin() const {return ConstIterator{data_};}
-    ConstIterator cend()   const {return ConstIterator{data_ + used_};}
+    const_iterator cbegin() const {return const_iterator{data_};}
+    const_iterator cend()   const {return const_iterator{data_ + used_};}
 
     ReverseIterator rbegin() {return ReverseIterator{data_ + used_};}
     ReverseIterator rend()   {return ReverseIterator{data_};}
