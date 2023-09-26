@@ -152,10 +152,10 @@ public:
     using size_type       = std::size_t;
     using base            = detail::VectorBuf<T>;
 
-    using iterator      = detail::iterator<pointer>;
+    using iterator       = detail::iterator<pointer>;
     using const_iterator = detail::iterator<const_pointer>;
-    using ReverseIterator      = std::reverse_iterator<iterator>;
-    using ConstReverseIterator = std::reverse_iterator<const_iterator>;
+    using reverse_iterator       = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 private:   
     using base::size_;
     using base::used_;
@@ -374,14 +374,14 @@ public:
     const_iterator cbegin() const {return const_iterator{data_};}
     const_iterator cend()   const {return const_iterator{data_ + used_};}
 
-    ReverseIterator rbegin() {return ReverseIterator{data_ + used_};}
-    ReverseIterator rend()   {return ReverseIterator{data_};}
+    reverse_iterator rbegin() {return reverse_iterator{data_ + used_};}
+    reverse_iterator rend()   {return reverse_iterator{data_};}
 
-    ConstReverseIterator rbegin() const {return ConstReverseIterator{data_ + used_};}
-    ConstReverseIterator rend()   const {return ConstReverseIterator{data_};}
+    const_reverse_iterator rbegin() const {return const_reverse_iterator{data_ + used_};}
+    const_reverse_iterator rend()   const {return const_reverse_iterator{data_};}
 
-    ConstReverseIterator crbegin() const {return ConstReverseIterator{data_ + used_};}
-    ConstReverseIterator crend()   const {return ConstReverseIterator{data_};}
+    const_reverse_iterator crbegin() const {return const_reverse_iterator{data_ + used_};}
+    const_reverse_iterator crend()   const {return const_reverse_iterator{data_};}
 
 }; // class Vector
 
