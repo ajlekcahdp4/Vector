@@ -11,7 +11,8 @@ find_package(Threads REQUIRED)
 find_package(GTest REQUIRED)
 enable_testing()
 
-include_directories(./include) 
+add_library(Vector INTERFACE ./include/)
+target_link_libraries(Vector)
 
 set(CMAKE_CXX_STANDARD          20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
