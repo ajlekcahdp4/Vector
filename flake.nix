@@ -9,35 +9,25 @@
   };
   outputs =
     { flake-parts, treefmt-nix, ... }@inputs:
+    let
+      overlayVector = import ./nix/overlays/vector.nix;
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ treefmt-nix.flakeModule ];
+
       systems = [ "x86_64-linux" ];
 
+      flake.overlays.default = overlayVector;
       perSystem =
-        { pkgs, lib, ... }:
+        { pkgs, system, ... }:
         {
+          _module.args.pkgs = import inputs.nixpkgs {
+            inherit system;
+            overlays = [ overlayVector ];
+          };
           imports = [ ./nix/treefmt.nix ];
           packages = {
-            default = pkgs.stdenv.mkDerivation {
-              src = ./.;
-              pname = "Vector";
-              version = "1.0.0";
-              nativeBuildInputs = with pkgs; [
-                cmake
-                gdb
-                valgrind
-                gtest
-              ];
-              buildInputs = [ ];
-              doInstallCheck = true;
-              installPhase = ''
-                mkdir -p $out/include
-                cp -r $src/lib/include/* $out/include
-              '';
-              installCheckPhase = ''
-                ctest --test-dir=build
-              '';
-            };
+            default = pkgs.Vector;
           };
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
