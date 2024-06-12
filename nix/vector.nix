@@ -7,9 +7,5 @@ stdenv.mkDerivation {
     cmake
     gtest
   ];
-  installPhase = ''
-    mkdir -p $out/include
-    install -Dm=rw-r-r $src/lib/include/* $out/include/
-  '';
   doCheck = true;
 }
